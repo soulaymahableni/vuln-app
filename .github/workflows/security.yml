@@ -1,0 +1,74 @@
+# TP10 partie 5 : workflow de sécurité (Shift Left)
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Permissions minimales pour tout le workflow : lecture du code uniquement
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # historique complet : Gitleaks analyse tous les commits
+      - name: Gitleaks (historique Git complet)
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git /repo --redact --verbose --exit-code 1
+
+  sast:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # publication du SARIF dans l'onglet Security
+    container:
+      image: semgrep/semgrep:1.184.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Semgrep (JavaScript + OWASP Top 10 + règle personnalisée)
+        run: |
+          semgrep scan \
+            --config p/javascript --config p/owasp-top-ten --config .semgrep \
+            --metrics=off --error --sarif --output semgrep.sarif .
+      - name: Publier le SARIF dans Security → Code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: npm ci (sans scripts d'installation)
+        run: npm ci --ignore-scripts
+      - name: npm audit (échec si vulnérabilité HIGH ou CRITICAL)
+        run: npm audit --audit-level=high
+
+  image:
+    runs-on: ubuntu-latest
+    needs: [secrets, sast, dependencies]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build de l'image
+        run: docker build -t vuln-app:${{ github.sha }} .
+      - name: Trivy image (échec sur CRITICAL corrigeable)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.trivyignore:/.trivyignore:ro" \
+            aquasec/trivy:0.76.2 image --exit-code 1 --severity CRITICAL \
+            --ignore-unfixed --ignorefile /.trivyignore vuln-app:${{ github.sha }}
+      - name: Trivy config (Dockerfile)
+        run: |
+          docker run --rm -v "$PWD:/src" aquasec/trivy:0.76.2 \
+            config --exit-code 1 --severity HIGH,CRITICAL /src

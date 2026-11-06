@@ -1,0 +1,20 @@
+# TP10 – Défi : règle Semgrep personnalisée
+# Interdit de journaliser le corps d'une requête (données personnelles dans les logs).
+rules:
+  - id: no-log-req-body
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Le corps de la requête ($REQ.body) est écrit dans les logs : risque de fuite de
+      données personnelles (RGPD, OWASP A09). Journaliser uniquement des champs non sensibles.
+    metadata:
+      category: security
+      owasp: "A09:2021 - Security Logging and Monitoring Failures"
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+    pattern-either:
+      - pattern: console.$LOG(..., $REQ.body, ...)
+      - pattern: console.$LOG(..., $REQ.body.$FIELD, ...)
+      - pattern: console.$LOG(..., JSON.stringify($REQ.body), ...)
+    paths:
+      exclude:
+        - ".semgrep/"

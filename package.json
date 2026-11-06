@@ -1,0 +1,19 @@
+{
+  "name": "vuln-app",
+  "version": "0.2.0",
+  "private": true,
+  "description": "TP10 : application vulnérable du lab, corrigée (Shift Left)",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.22.3",
+    "jsonwebtoken": "^9.0.3",
+    "sqlite3": "^6.0.1"
+  }
+}

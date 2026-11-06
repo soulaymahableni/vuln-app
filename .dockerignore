@@ -1,0 +1,14 @@
+node_modules
+.git
+.github
+.semgrep
+.env
+.env.*
+reports
+captures
+*.log
+Jenkinsfile
+README.md
+.gitleaksignore
+.trivyignore
+.pre-commit-config.yaml

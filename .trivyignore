@@ -1,0 +1,11 @@
+# TP10 – Défi : CVE ignorées par Trivy (risque accepté, avec justification et date d'expiration)
+#
+# Format : <ID> exp:<AAAA-MM-JJ>
+# Après la date d'expiration, la CVE est de nouveau signalée et la décision doit être revue.
+#
+# Exemple à adapter avec une CVE réellement remontée par Trivy dont la colonne
+# "Fixed Version" est vide (aucun correctif publié) :
+#
+# Justification : paquet de l'image de base node:24-alpine, aucun correctif disponible,
+# fonction vulnérable non utilisée par l'application. Revue par : <nom>, le <date>.
+# CVE-AAAA-NNNNN exp:2026-12-31
